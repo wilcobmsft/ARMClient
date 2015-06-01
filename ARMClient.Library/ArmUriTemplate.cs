@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 
 namespace ARMClient.Library
 {
-    public class CsmTemplate
+    public class ArmUriTemplate
     {
         public string TemplateUrl { get; private set; }
         private readonly string apiVersion;
-        public CsmTemplate(string templateUrl, string apiVersion)
+        public ArmUriTemplate(string templateUrl, string apiVersion)
         {
             this.TemplateUrl = templateUrl;
             this.apiVersion = "api-version=" + apiVersion;
@@ -30,7 +30,8 @@ namespace ARMClient.Library
                 }
                 return a;
             }));
-            uriBuilder.Query = string.IsNullOrWhiteSpace(uriBuilder.Query) ? this.apiVersion : string.Format("{0}&{1}", uriBuilder.Query, this.apiVersion);
+            var query = uriBuilder.Query.Trim('?');
+            uriBuilder.Query = string.IsNullOrWhiteSpace(query) ? this.apiVersion : string.Format("{0}&{1}", this.apiVersion, query);
             return uriBuilder.Uri;
         }
     }

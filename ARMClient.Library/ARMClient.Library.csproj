@@ -51,8 +51,10 @@
     <Compile Include="..\ARMClient.Authentication\Properties\AssemblyInfo.cs">
       <Link>Properties\AssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="ARMLib.cs" />
-    <Compile Include="CsmTemplate.cs" />
+    <Compile Include="AzureClient.cs" />
+    <Compile Include="ArmUriTemplate.cs" />
+    <Compile Include="IAzureClient.cs" />
+    <Compile Include="LoginType.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ARMClient.Authentication\ARMClient.Authentication.csproj">
