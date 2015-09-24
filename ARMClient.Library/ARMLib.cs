@@ -32,18 +32,26 @@ namespace ARMClient.Library
         private string _password;
         private string _query;
 
-        public static dynamic GetDynamicClient(string apiVersion, AzureEnvironments azureEnvironment = AzureEnvironments.Prod, string url = null)
+        public static dynamic GetDynamicClient(string apiVersion, AzureEnvironments azureEnvironment = AzureEnvironments.Prod, string url = null, string accessToken = null)
         {
-            return new ARMLib(apiVersion, azureEnvironment, url);
+            return new ARMLib(apiVersion, azureEnvironment, url, accessToken);
         }
 
-        private ARMLib(string apiVersion, AzureEnvironments azureEnvironment, string url)
+        private ARMLib(string apiVersion, AzureEnvironments azureEnvironment, string url, string accessToken)
         {
             this._apiVersion = apiVersion;
             this._authHelper = new AuthHelper();
             this._azureEnvironment = azureEnvironment;
             this._url = url ?? Constants.CSMUrls[(int)azureEnvironment];
             this._query = string.Empty;
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                this._tokenCacheInfo = new TokenCacheInfo
+                {
+                    AccessToken = accessToken,
+                    ExpiresOn = DateTimeOffset.MaxValue
+                };
+            }
         }
 
         private ARMLib(ARMLib oldClient, string url, string query)
