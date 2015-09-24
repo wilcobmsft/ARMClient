@@ -14,6 +14,7 @@ using ARMClient.Authentication.Contracts;
 using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Net.Sockets;
 
 namespace ARMClient.Library
 {
@@ -29,6 +30,7 @@ namespace ARMClient.Library
         private string _userName;
         private string _password;
         private int _retryCount;
+        private Random rand = new Random();
 
         public AzureClient(int retryCount = 0, AzureEnvironments azureEnvironment = AzureEnvironments.Prod)
         {
@@ -60,25 +62,43 @@ namespace ARMClient.Library
 
         public async Task<HttpResponseMessage> HttpInvoke(string method, Uri uri, object objectPayload = null)
         {
-            var response = await HttpInvoke(uri, method, objectPayload);
-
-            if (!response.IsSuccessStatusCode && this._retryCount > 0)
+            var socketTrials = 10;
+            var retries = this._retryCount;
+            while (true)
             {
-                var retries = this._retryCount;
-                while (retries > 0)
+                try
                 {
-                    response = await HttpInvoke(uri, method, objectPayload);
-                    if (response.IsSuccessStatusCode)
+                    var response = await HttpInvoke(uri, method, objectPayload);
+
+                    if (!response.IsSuccessStatusCode && this._retryCount > 0)
                     {
-                        return response;
+                        while (retries > 0)
+                        {
+                            response = await HttpInvoke(uri, method, objectPayload);
+                            if (response.IsSuccessStatusCode)
+                            {
+                                return response;
+                            }
+                            else
+                            {
+                                retries--;
+                            }
+                        }
                     }
-                    else
-                    {
-                        retries--;
-                    }
+                    return response;
                 }
+                catch (SocketException)
+                {
+                    if (socketTrials <= 0) throw;
+                    socketTrials--;
+                }
+                catch (Exception)
+                {
+                    if (retries <= 0) throw;
+                    retries--;
+                }
+                await Task.Delay(rand.Next(1000, 10000));
             }
-            return response;
         }
 
         private async Task<HttpResponseMessage> HttpInvoke(Uri uri, string verb, object objectPayload)
