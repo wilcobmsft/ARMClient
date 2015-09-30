@@ -15,7 +15,7 @@ namespace ARMClient.Library.Runner
 
         private static async Task Run()
         {
-            var armClient = ARMLib.GetDynamicClient(apiVersion: "2014-11-01").ConfigureLogin(LoginType.Upn, "userName", "password");
+            var armClient = await ARMLib.GetDynamicClient(apiVersion: "2014-11-01").ConfigureLogin(LoginType.Upn, "userName", "password");
 
             var resrouceGroups = await armClient.Subscriptions["{subscriptionId}"]
                                                 .ResourceGroups

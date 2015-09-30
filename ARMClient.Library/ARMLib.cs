@@ -145,8 +145,8 @@ namespace ARMClient.Library
                         this._password = args[2].ToString();
                         break;
                 }
-                GetAuthorizationHeader().Wait();
-                result = this;
+                var task = GetAuthorizationHeader();
+                result = task.ContinueWith(_ => this);
             }
             else if (binder.Name.Equals("Query", StringComparison.OrdinalIgnoreCase))
             {
