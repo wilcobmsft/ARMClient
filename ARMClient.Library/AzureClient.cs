@@ -1,20 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.IO;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ARMClient.Authentication;
 using ARMClient.Authentication.AADAuthentication;
 using ARMClient.Authentication.Contracts;
-using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
-using System.Diagnostics;
-using System.Net.Sockets;
 
 namespace ARMClient.Library
 {
@@ -22,7 +15,6 @@ namespace ARMClient.Library
     {
         private TokenCacheInfo _tokenCacheInfo;
         private readonly IAuthHelper _authHelper;
-        private readonly AzureEnvironments _azureEnvironment;
         private LoginType _loginType;
         private string _tenantId;
         private string _appId;
@@ -32,10 +24,9 @@ namespace ARMClient.Library
         private int _retryCount;
         private Random rand = new Random();
 
-        public AzureClient(int retryCount = 0, AzureEnvironments azureEnvironment = AzureEnvironments.Prod)
+        public AzureClient(int retryCount = 0, IAuthHelper authHelper = null)
         {
-            this._authHelper = new AuthHelper();
-            this._azureEnvironment = azureEnvironment;
+            this._authHelper = authHelper ?? new AuthHelper();
             this._retryCount = retryCount;
             this._loginType = LoginType.Interactive;
         }
@@ -150,7 +141,11 @@ namespace ARMClient.Library
             var match = Regex.Match(url, ".*\\/subscriptions\\/(.*?)\\/", RegexOptions.IgnoreCase);
             var subscriptionId = match.Success ? match.Groups[1].ToString() : null;
 
-            if (this._tokenCacheInfo == null || this._tokenCacheInfo.ExpiresOn <= DateTimeOffset.UtcNow)
+            if (this._authHelper.IsCacheValid())
+            {
+                this._tokenCacheInfo = await this._authHelper.GetToken(subscriptionId).ConfigureAwait(false);
+            }
+            else if (this._tokenCacheInfo == null || this._tokenCacheInfo.ExpiresOn <= DateTimeOffset.UtcNow)
             {
                 switch (this._loginType)
                 {
@@ -164,7 +159,7 @@ namespace ARMClient.Library
                         await this._authHelper.GetTokenByUpn(this._userName, this._password).ConfigureAwait(false);
                         break;
                 }
-                this._tokenCacheInfo = await this._authHelper.GetToken(subscriptionId, Constants.CSMResource).ConfigureAwait(false);
+                this._tokenCacheInfo = await this._authHelper.GetToken(subscriptionId).ConfigureAwait(false);
             }
             return this._tokenCacheInfo.CreateAuthorizationHeader();
         }

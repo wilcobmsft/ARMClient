@@ -53,6 +53,7 @@
     </Compile>
     <Compile Include="AzureClient.cs" />
     <Compile Include="ArmUriTemplate.cs" />
+    <Compile Include="IArmUriTemplate.cs" />
     <Compile Include="IAzureClient.cs" />
     <Compile Include="LoginType.cs" />
   </ItemGroup>

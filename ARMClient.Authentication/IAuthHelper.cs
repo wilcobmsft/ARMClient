@@ -15,5 +15,6 @@ namespace ARMClient.Authentication
         bool IsCacheValid();
         void ClearTokenCache();
         IEnumerable<string> DumpTokenCache();
+        TenantCacheInfo GetTenantInfo(string tenantId);
     }
 }

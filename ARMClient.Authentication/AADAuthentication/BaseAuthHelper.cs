@@ -177,6 +177,16 @@ namespace ARMClient.Authentication.AADAuthentication
             return cacheInfo;
         }
 
+        public TenantCacheInfo GetTenantInfo(string tenantId)
+        {
+            TenantCacheInfo temp;
+            if (this.TenantStorage.GetCache().TryGetValue(tenantId, out temp))
+            {
+                return temp;
+            }
+            return null;
+        }
+
         protected async Task<TokenCacheInfo> GetRecentToken(string resource)
         {
             TokenCacheInfo cacheInfo = this.TokenStorage.GetRecentToken(resource);
@@ -635,6 +645,5 @@ namespace ARMClient.Authentication.AADAuthentication
                 }
             }
         }
-
     }
 }

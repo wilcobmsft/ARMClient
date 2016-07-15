@@ -18,7 +18,7 @@ namespace ARMClient.Library.Runner
 
         private static async Task Run()
         {
-            var azureClient = new AzureClient();
+            var azureClient = new AzureClient(authHelper: new PersistentAuthHelper());
 
             var resrouceGroupsResponse = await azureClient.HttpInvoke(HttpMethod.Get, new Uri("https://management.azure.com/subscriptions/2d41f884-3a5d-4b75-809c-7495edb04a0f/resourceGroups?api-version=2014-04-01"));
             resrouceGroupsResponse.EnsureSuccessStatusCode();

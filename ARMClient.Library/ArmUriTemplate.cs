@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace ARMClient.Library
 {
-    public class ArmUriTemplate
+    public class ArmUriTemplate : IArmUriTemplate
     {
         public string TemplateUrl { get; private set; }
         private readonly string apiVersion;
