@@ -177,14 +177,9 @@ namespace ARMClient.Authentication.AADAuthentication
             return cacheInfo;
         }
 
-        public TenantCacheInfo GetTenantInfo(string tenantId)
+        public IEnumerable<TenantCacheInfo> GetTenantsInfo()
         {
-            TenantCacheInfo temp;
-            if (this.TenantStorage.GetCache().TryGetValue(tenantId, out temp))
-            {
-                return temp;
-            }
-            return null;
+            return this.TenantStorage.GetCache().Select(kv => kv.Value);
         }
 
         protected async Task<TokenCacheInfo> GetRecentToken(string resource)
