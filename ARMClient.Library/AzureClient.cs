@@ -23,12 +23,14 @@ namespace ARMClient.Library
         private string _password;
         private int _retryCount;
         private Random rand = new Random();
+        private Func<TokenCacheInfo, Task> _loginCallback;
 
-        public AzureClient(int retryCount = 0, IAuthHelper authHelper = null)
+        public AzureClient(int retryCount = 0, IAuthHelper authHelper = null, Func<TokenCacheInfo, Task> loginCallback = null)
         {
             this._authHelper = authHelper ?? new AuthHelper();
             this._retryCount = retryCount;
             this._loginType = LoginType.Interactive;
+            this._loginCallback = loginCallback;
         }
 
         public void ConfigureSpnLogin(string tenantId, string appId, string appKey)
@@ -160,6 +162,10 @@ namespace ARMClient.Library
                         break;
                 }
                 this._tokenCacheInfo = await this._authHelper.GetToken(subscriptionId).ConfigureAwait(false);
+                if (this._loginCallback != null)
+                {
+                    await this._loginCallback.Invoke(this._tokenCacheInfo);
+                }
             }
             return this._tokenCacheInfo.CreateAuthorizationHeader();
         }
