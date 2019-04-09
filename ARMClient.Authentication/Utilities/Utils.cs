@@ -32,10 +32,10 @@ namespace ARMClient.Authentication.Utilities
             return Environment.GetEnvironmentVariable("ARMCLIENT_TENANT") ?? Constants.AADCommonTenant;
         }
 
-        public static AzureEnvironments GetDefaultEnv()
+        public static AzureEnvironments GetDefaultEnv(AzureEnvironments lastResort = AzureEnvironments.Prod)
         {
             AzureEnvironments env;
-            return Enum.TryParse<AzureEnvironments>(Environment.GetEnvironmentVariable("ARMCLIENT_ENV"), true, out env) ? env : AzureEnvironments.Prod;
+            return Enum.TryParse<AzureEnvironments>(Environment.GetEnvironmentVariable("ARMCLIENT_ENV"), true, out env) ? env : lastResort;
         }
 
         public static string GetDefaultCachePath()
@@ -100,9 +100,23 @@ namespace ARMClient.Authentication.Utilities
         {
             using (var client = new HttpClient(handler))
             {
-                client.DefaultRequestHeaders.Add("Authorization", cacheInfo.CreateAuthorizationHeader(), headers);
                 client.DefaultRequestHeaders.Add("User-Agent", Constants.UserAgent.Value, headers);
                 client.DefaultRequestHeaders.Add("Accept", Constants.JsonContentType, headers);
+
+                if (Utils.IsCustom(uri))
+                {
+                    var claims = ParseClaims(cacheInfo.AccessToken);
+                    client.DefaultRequestHeaders.Add("x-ms-principal-name", cacheInfo.DisplayableId);
+                    client.DefaultRequestHeaders.Add("x-ms-client-tenant-id", cacheInfo.TenantId);
+                    client.DefaultRequestHeaders.Add("x-ms-client-object-id", cacheInfo.ObjectId);
+                    client.DefaultRequestHeaders.Add("x-ms-client-principal-name", claims["unique_name"].Value<string>());
+                    client.DefaultRequestHeaders.Add("x-ms-arm-signed-user-token", cacheInfo.AccessToken);
+                    client.DefaultRequestHeaders.Add("Referer", uri.OriginalString);
+                }
+                else
+                {
+                    client.DefaultRequestHeaders.Add("Authorization", cacheInfo.CreateAuthorizationHeader(), headers);
+                }
 
                 if (Utils.IsRdfe(uri))
                 {
@@ -171,6 +185,21 @@ namespace ARMClient.Authentication.Utilities
                     return (-1) * (int)response.StatusCode;
                 }
             }
+        }
+
+        public static JObject ParseClaims(string accessToken)
+        {
+            var base64 = accessToken.Split('.')[1];
+
+            // fixup
+            int mod4 = base64.Length % 4;
+            if (mod4 > 0)
+            {
+                base64 += new string('=', 4 - mod4);
+            }
+
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+            return JObject.Parse(json);
         }
 
         private static void Add(this HttpRequestHeaders requestHeaders, string name, string value, Dictionary<string, List<string>> headers)
@@ -275,6 +304,11 @@ namespace ARMClient.Authentication.Utilities
             }
 
             return new Uri(new Uri(ARMClient.Authentication.Constants.AADGraphUrls[(int)env]), path);
+        }
+
+        public static bool IsCustom(Uri uri)
+        {
+            return !IsRdfe(uri) && !IsCSM(uri) && !IsGraphApi(uri) && !IsKeyVault(uri);
         }
 
         public static bool IsRdfe(Uri uri)

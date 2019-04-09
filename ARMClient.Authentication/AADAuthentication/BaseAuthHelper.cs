@@ -579,7 +579,10 @@ namespace ARMClient.Authentication.AADAuthentication
                             promptBehavior: PromptBehavior.Always);
                     }
 
-                    var cacheInfo = new TokenCacheInfo(resource, result);
+                    var cacheInfo = new TokenCacheInfo(resource, result)
+                    {
+                        ObjectId = result.UserInfo.UniqueId
+                    };
                     tokenCache.Add(cacheInfo);
                     tcs.TrySetResult(cacheInfo);
                 }

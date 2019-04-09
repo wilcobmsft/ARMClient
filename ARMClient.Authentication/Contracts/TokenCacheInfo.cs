@@ -13,6 +13,7 @@ namespace ARMClient.Authentication.Contracts
             : this(resource, result)
         {
             AppId = appId;
+            ObjectId = appId;
             AppKey = appKey;
             TenantId = tenantId;
         }
@@ -22,6 +23,7 @@ namespace ARMClient.Authentication.Contracts
             AccessToken = result.AccessToken;
             DisplayableId = result.UserInfo == null ? null : result.UserInfo.DisplayableId;
             ExpiresOn = result.ExpiresOn;
+            ObjectId = result.UserInfo == null ? null : result.UserInfo.UniqueId;
             RefreshToken = result.RefreshToken;
             Resource = resource;
             TenantId = result.TenantId;
@@ -34,6 +36,7 @@ namespace ARMClient.Authentication.Contracts
         public DateTimeOffset ExpiresOn { get; set; }
         public string RefreshToken { get; set; }
         public string Resource { get; set; }
+        public string ObjectId { get; set; }
         public string TenantId { get; set; }
         public string ClientId { get; set; }
 

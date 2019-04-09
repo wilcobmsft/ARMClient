@@ -14,6 +14,7 @@ using ARMClient.Authentication.Contracts;
 using ARMClient.Authentication.Utilities;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Net.Security;
 
 namespace ARMClient
 {
@@ -22,6 +23,7 @@ namespace ARMClient
         [STAThread]
         static int Main(string[] args)
         {
+            System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
             Utils.SetTraceListener(new ConsoleTraceListener());
             try
             {
@@ -274,17 +276,7 @@ namespace ARMClient
 
         static void DumpClaims(string accessToken)
         {
-            var base64 = accessToken.Split('.')[1];
-
-            // fixup
-            int mod4 = base64.Length % 4;
-            if (mod4 > 0)
-            {
-                base64 += new string('=', 4 - mod4);
-            }
-
-            var json = Encoding.UTF8.GetString(Convert.FromBase64String(base64));
-            PrintColoredJson(JObject.Parse(json));
+            PrintColoredJson(Utils.ParseClaims(accessToken));
             Console.WriteLine();
         }
 
@@ -385,7 +377,29 @@ namespace ARMClient
 
         static async Task<int> HttpInvoke(Uri uri, TokenCacheInfo cacheInfo, string verb, bool verbose, HttpContent content, Dictionary<string, List<string>> headers)
         {
-            var logginerHandler = new HttpLoggingHandler(new HttpClientHandler(), verbose);
+            var primaryHandler = new WebRequestHandler();
+            if (Utils.IsCustom(uri))
+            {
+                var certSubjectName = Environment.GetEnvironmentVariable("ARMCLIENT_CERT");
+                if (string.IsNullOrWhiteSpace(certSubjectName))
+                {
+                    throw new Exception("ARMCLIENT_CERT environment variable is required when invoking localhost.");
+                }
+
+                using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
+                {
+                    store.Open(OpenFlags.ReadOnly);
+                    var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certSubjectName, validOnly: true);
+                    if (certs.Count == 0)
+                    {
+                        throw new InvalidOperationException($"Unable to find a certificate with subject name '{certSubjectName}'.");
+                    }
+
+                    primaryHandler.ClientCertificates.Add(certs[0]);
+                }
+            }
+
+            var logginerHandler = new HttpLoggingHandler(primaryHandler, verbose);
             return await Utils.HttpInvoke(uri, cacheInfo, verb, logginerHandler, content, headers);
         }
 
@@ -645,7 +659,7 @@ namespace ARMClient
         static AzureEnvironments GetAzureEnvironments(Uri uri, PersistentAuthHelper persistentAuthHelper)
         {
             var host = uri.Host;
-
+            
             var graphs = Constants.AADGraphUrls.Where(url => url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0);
             if (graphs.Count() > 1)
             {
@@ -711,8 +725,13 @@ namespace ARMClient
             {
                 return AzureEnvironments.Prod;
             }
+            
+            if (Utils.IsCustom(uri))
+            {
+                return Utils.GetDefaultEnv(AzureEnvironments.Dogfood);
+            }
 
-            return AzureEnvironments.Prod;
+            return Utils.GetDefaultEnv();
         }
     }
 }

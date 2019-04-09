@@ -36,6 +36,7 @@ namespace ARMClient.Authentication.Contracts
                 RefreshToken = RefreshToken,
                 Resource = Resource,
                 ClientId = _ClientId,
+                ObjectId = Oid,
                 TenantId = _Authority.Split('/').Last()
             };
         }
