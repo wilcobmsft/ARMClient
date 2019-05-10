@@ -40,13 +40,13 @@ namespace ARMClient.Authentication.AADAuthentication
             set { this.EnvironmentStorage.SaveEnvironment(value); }
         }
 
-        public async Task AcquireTokens()
+        public async Task AcquireTokens(string resource = null)
         {
             this.TokenStorage.ClearCache();
             this.TenantStorage.ClearCache();
 
             var tokenCache = new CustomTokenCache();
-            var cacheInfo = await GetAuthorizationResult(tokenCache, Utils.GetLoginTenant());
+            var cacheInfo = await GetAuthorizationResult(tokenCache, Utils.GetLoginTenant(), user: null, resource: resource);
             Utils.Trace.WriteLine(string.Format("Welcome {0} (Tenant: {1})", cacheInfo.DisplayableId, cacheInfo.TenantId));
 
             var tenantCache = await GetTokenForTenants(tokenCache, cacheInfo);
@@ -373,15 +373,15 @@ namespace ARMClient.Authentication.AADAuthentication
             }
         }
 
-        public async Task<TokenCacheInfo> GetTokenBySpn(string tenantId, string appId, string appKey)
+        public async Task<TokenCacheInfo> GetTokenBySpn(string tenantId, string appId, string appKey, string resource = null)
         {
             this.TokenStorage.ClearCache();
             this.TenantStorage.ClearCache();
 
             var tokenCache = new CustomTokenCache();
-            var cacheInfo = GetAuthorizationResultBySpn(tokenCache, tenantId, appId, appKey, Constants.CSMResources[(int)AzureEnvironments]);
+            var cacheInfo = GetAuthorizationResultBySpn(tokenCache, tenantId, appId, appKey, resource ?? Constants.CSMResources[(int)AzureEnvironments]);
 
-            var tenantCache = await GetTokenForTenants(tokenCache, cacheInfo, appId: appId, appKey: appKey);
+            var tenantCache = await GetTokenForTenants(tokenCache, cacheInfo, appId, appKey, resource);
 
             this.TokenStorage.SaveCache(tokenCache);
             this.TenantStorage.SaveCache(tenantCache);
@@ -389,15 +389,15 @@ namespace ARMClient.Authentication.AADAuthentication
             return cacheInfo;
         }
 
-        public async Task<TokenCacheInfo> GetTokenBySpn(string tenantId, string appId, X509Certificate2 certificate)
+        public async Task<TokenCacheInfo> GetTokenBySpn(string tenantId, string appId, X509Certificate2 certificate, string resource = null)
         {
             this.TokenStorage.ClearCache();
             this.TenantStorage.ClearCache();
 
             var tokenCache = new CustomTokenCache();
-            var cacheInfo = await GetAuthorizationResultBySpn(tokenCache, tenantId, appId, certificate, Constants.CSMResources[(int)AzureEnvironments]);
+            var cacheInfo = await GetAuthorizationResultBySpn(tokenCache, tenantId, appId, certificate, resource ?? Constants.CSMResources[(int)AzureEnvironments]);
 
-            var tenantCache = await GetTokenForTenants(tokenCache, cacheInfo, appId: appId, appKey: "_certificate_");
+            var tenantCache = await GetTokenForTenants(tokenCache, cacheInfo, appId, appKey: "_certificate_", resource: resource);
 
             this.TokenStorage.SaveCache(tokenCache);
             this.TenantStorage.SaveCache(tenantCache);
@@ -661,10 +661,12 @@ namespace ARMClient.Authentication.AADAuthentication
         }
 
         protected async Task<Dictionary<string, TenantCacheInfo>> GetTokenForTenants(CustomTokenCache tokenCache, TokenCacheInfo cacheInfo,
-            string appId = null, string appKey = null, string username = null, string password = null)
+            string appId = null, string appKey = null, string username = null, string password = null, string resource = null)
         {
             var recentInfo = cacheInfo;
-            var tenantIds = await GetTenantIds(cacheInfo);
+            var tenantIds = resource == null
+                ? await GetTenantIds(cacheInfo)
+                : new string[] { cacheInfo.TenantId };
             if (!tenantIds.Contains(cacheInfo.TenantId))
             {
                 var list = tenantIds.ToList();
@@ -687,15 +689,15 @@ namespace ARMClient.Authentication.AADAuthentication
                 {
                     if (!String.IsNullOrEmpty(appId) && !String.IsNullOrEmpty(appKey))
                     {
-                        result = GetAuthorizationResultBySpn(tokenCache, tenantId: tenantId, appId: appId, appKey: appKey, resource: Constants.CSMResources[(int)AzureEnvironments]);
+                        result = GetAuthorizationResultBySpn(tokenCache, tenantId: tenantId, appId: appId, appKey: appKey, resource: resource ?? Constants.CSMResources[(int)AzureEnvironments]);
                     }
                     else if (!String.IsNullOrEmpty(username) && !String.IsNullOrEmpty(password))
                     {
-                        result = GetAuthorizationResultByUpn(tokenCache, tenantId: tenantId, username: username, password: password, resource: Constants.CSMResources[(int)AzureEnvironments]);
+                        result = GetAuthorizationResultByUpn(tokenCache, tenantId: tenantId, username: username, password: password, resource: resource ?? Constants.CSMResources[(int)AzureEnvironments]);
                     }
                     else
                     {
-                        result = await GetAuthorizationResult(tokenCache, tenantId: tenantId, user: cacheInfo.DisplayableId);
+                        result = await GetAuthorizationResult(tokenCache, tenantId: tenantId, user: cacheInfo.DisplayableId, resource: resource);
                     }
                 }
                 catch (Exception ex)
@@ -714,15 +716,15 @@ namespace ARMClient.Authentication.AADAuthentication
                     }
                     else if (!String.IsNullOrEmpty(appId) && !String.IsNullOrEmpty(appKey))
                     {
-                        aadToken = GetAuthorizationResultBySpn(tokenCache, tenantId: tenantId, appId: appId, appKey: appKey, resource: Constants.AADGraphUrls[(int)AzureEnvironments]);
+                        aadToken = GetAuthorizationResultBySpn(tokenCache, tenantId: tenantId, appId: appId, appKey: appKey, resource: resource ?? Constants.AADGraphUrls[(int)AzureEnvironments]);
                     }
                     else if (!String.IsNullOrEmpty(username) && !String.IsNullOrEmpty(password))
                     {
-                        aadToken = GetAuthorizationResultByUpn(tokenCache, tenantId: tenantId, username: username, password: password, resource: Constants.AADGraphUrls[(int)AzureEnvironments]);
+                        aadToken = GetAuthorizationResultByUpn(tokenCache, tenantId: tenantId, username: username, password: password, resource: resource ?? Constants.AADGraphUrls[(int)AzureEnvironments]);
                     }
                     else
                     {
-                        aadToken = await GetAuthorizationResult(tokenCache, tenantId: tenantId, user: cacheInfo.DisplayableId, resource: Constants.AADGraphUrls[(int)AzureEnvironments]);
+                        aadToken = await GetAuthorizationResult(tokenCache, tenantId: tenantId, user: cacheInfo.DisplayableId, resource: resource ?? Constants.AADGraphUrls[(int)AzureEnvironments]);
                     }
 
                     if (aadToken != null)
@@ -755,23 +757,26 @@ namespace ARMClient.Authentication.AADAuthentication
 
                 try
                 {
-                    var subscriptions = await GetSubscriptions(result);
-                    Utils.Trace.WriteLine(string.Format("\tThere are {0} subscriptions", subscriptions.Length));
-
-                    info.subscriptions = subscriptions.Select(subscription => new SubscriptionCacheInfo
+                    if (Constants.CSMResources[(int)AzureEnvironments] == result.Resource)
                     {
-                        subscriptionId = subscription.subscriptionId,
-                        displayName = subscription.displayName
-                    }).ToArray();
+                        var subscriptions = await GetSubscriptions(result);
+                        Utils.Trace.WriteLine(string.Format("\tThere are {0} subscriptions", subscriptions.Length));
 
-                    if (recentInfo != null && info.subscriptions.Length > 0)
-                    {
-                        recentInfo = result;
-                    }
+                        info.subscriptions = subscriptions.Select(subscription => new SubscriptionCacheInfo
+                        {
+                            subscriptionId = subscription.subscriptionId,
+                            displayName = subscription.displayName
+                        }).ToArray();
 
-                    foreach (var subscription in subscriptions)
-                    {
-                        Utils.Trace.WriteLine(string.Format("\tSubscription {0} ({1})", subscription.subscriptionId, subscription.displayName));
+                        if (recentInfo != null && info.subscriptions.Length > 0)
+                        {
+                            recentInfo = result;
+                        }
+
+                        foreach (var subscription in subscriptions)
+                        {
+                            Utils.Trace.WriteLine(string.Format("\tSubscription {0} ({1})", subscription.subscriptionId, subscription.displayName));
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -788,7 +793,7 @@ namespace ARMClient.Authentication.AADAuthentication
                 Utils.Trace.WriteLine(string.Empty);
             }
 
-            this.TokenStorage.SaveRecentToken(recentInfo, Constants.CSMResources[(int)AzureEnvironments]);
+            this.TokenStorage.SaveRecentToken(recentInfo, resource ?? Constants.CSMResources[(int)AzureEnvironments]);
 
             return tenantCache;
         }

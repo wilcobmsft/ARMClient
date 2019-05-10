@@ -54,7 +54,7 @@ namespace ARMClient
                         Console.ForegroundColor = headerNameColor;
                         Console.Write("{0}: ", header.Key);
                         Console.ForegroundColor = headerValueColor;
-                        if (String.Equals("Authorization", header.Key))
+                        if (String.Equals("Authorization", header.Key) || String.Equals("x-ms-arm-signed-user-token", header.Key))
                             Console.WriteLine(header.Value.First().Substring(0, 20) + "...");
                         else
                             Console.WriteLine(String.Join("; ", header.Value));

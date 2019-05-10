@@ -105,13 +105,27 @@ namespace ARMClient.Authentication.Utilities
 
                 if (Utils.IsCustom(uri))
                 {
-                    var claims = ParseClaims(cacheInfo.AccessToken);
-                    client.DefaultRequestHeaders.Add("x-ms-principal-name", cacheInfo.DisplayableId);
-                    client.DefaultRequestHeaders.Add("x-ms-client-tenant-id", cacheInfo.TenantId);
-                    client.DefaultRequestHeaders.Add("x-ms-client-object-id", cacheInfo.ObjectId);
-                    client.DefaultRequestHeaders.Add("x-ms-client-principal-name", claims["unique_name"].Value<string>());
-                    client.DefaultRequestHeaders.Add("x-ms-arm-signed-user-token", cacheInfo.AccessToken);
-                    client.DefaultRequestHeaders.Add("Referer", uri.OriginalString);
+                    if (Constants.CSMResources.Contains(cacheInfo.Resource))
+                    {
+                        var claims = ParseClaims(cacheInfo.AccessToken);
+                        if (string.IsNullOrWhiteSpace(cacheInfo.DisplayableId))
+                        {
+                            client.DefaultRequestHeaders.Add("x-ms-principal-name", cacheInfo.DisplayableId);
+                        }
+
+                        client.DefaultRequestHeaders.Add("x-ms-client-tenant-id", cacheInfo.TenantId);
+                        client.DefaultRequestHeaders.Add("x-ms-client-object-id", cacheInfo.ObjectId);
+                        if (claims["unique_name"] != null)
+                        {
+                            client.DefaultRequestHeaders.Add("x-ms-client-principal-name", claims["unique_name"].Value<string>());
+                        }
+                        client.DefaultRequestHeaders.Add("x-ms-arm-signed-user-token", cacheInfo.AccessToken);
+                        client.DefaultRequestHeaders.Add("Referer", uri.OriginalString);
+                    }
+                    else
+                    {
+                        client.DefaultRequestHeaders.Add("Authorization", "Bearer " + cacheInfo.AccessToken);
+                    }
                 }
                 else
                 {

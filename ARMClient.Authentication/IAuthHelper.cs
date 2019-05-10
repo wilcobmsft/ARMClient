@@ -8,10 +8,10 @@ namespace ARMClient.Authentication
     public interface IAuthHelper
     {
         AzureEnvironments AzureEnvironments { get; set; }
-        Task AcquireTokens();
+        Task AcquireTokens(string resource = null);
         Task AzLogin();
         Task<TokenCacheInfo> GetToken(string id, string resource);
-        Task<TokenCacheInfo> GetTokenBySpn(string tenantId, string appId, string appKey);
+        Task<TokenCacheInfo> GetTokenBySpn(string tenantId, string appId, string appKey, string resource = null);
         Task<TokenCacheInfo> GetTokenByUpn(string username, string password);
         bool IsCacheValid();
         void ClearTokenCache();

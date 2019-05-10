@@ -118,13 +118,22 @@ namespace ARMClient
                     {
                         var tenantId = _parameters.Get(1, keyName: "tenant");
                         var appId = _parameters.Get(2, keyName: "appId");
+                        var resource = Environment.GetEnvironmentVariable("ARMCLIENT_RESOURCE");
                         EnsureGuidFormat(appId);
 
                         X509Certificate2 certificate = null;
                         var appKey = _parameters.Get(3, keyName: "appKey", requires: false);
                         if (appKey == null)
                         {
-                            appKey = PromptForPassword("appKey");
+                            var certSubjectName = Environment.GetEnvironmentVariable("ARMCLIENT_CERT");
+                            if (!string.IsNullOrWhiteSpace(certSubjectName))
+                            {
+                                certificate = FindCertificate(certSubjectName);
+                            }
+                            else
+                            {
+                                appKey = PromptForPassword("appKey");
+                            }
                         }
                         else
                         {
@@ -160,8 +169,8 @@ namespace ARMClient
 
                         persistentAuthHelper.AzureEnvironments = Utils.GetDefaultEnv();
                         var cacheInfo = certificate != null ?
-                            persistentAuthHelper.GetTokenBySpn(tenantId, appId, certificate).Result :
-                            persistentAuthHelper.GetTokenBySpn(tenantId, appId, appKey).Result;
+                            persistentAuthHelper.GetTokenBySpn(tenantId, appId, certificate, resource).Result :
+                            persistentAuthHelper.GetTokenBySpn(tenantId, appId, appKey, resource).Result;
                         return 0;
                     }
                     else if (String.Equals(verb, "upn", StringComparison.OrdinalIgnoreCase))
@@ -193,6 +202,7 @@ namespace ARMClient
 
                         var content = ParseHttpContent(verb, _parameters);
                         var headers = _parameters.GetValue<Dictionary<string, List<string>>>("-h", requires: false);
+                        var resource = Environment.GetEnvironmentVariable("ARMCLIENT_RESOURCE");
                         _parameters.ThrowIfUnknown();
 
                         var uri = Utils.EnsureAbsoluteUri(path, persistentAuthHelper);
@@ -202,14 +212,16 @@ namespace ARMClient
                             return HttpInvoke(uri, new TokenCacheInfo { AccessToken = accessToken }, verb, verbose, content, headers).Result;
                         }
 
-                        var env = GetAzureEnvironments(uri, persistentAuthHelper);
+                        var env = string.IsNullOrWhiteSpace(resource)
+                            ? GetAzureEnvironments(uri, persistentAuthHelper)
+                            : AzureEnvironments.Prod;
                         if (!persistentAuthHelper.IsCacheValid() || persistentAuthHelper.AzureEnvironments != env)
                         {
                             persistentAuthHelper.AzureEnvironments = env;
-                            persistentAuthHelper.AcquireTokens().Wait();
+                            persistentAuthHelper.AcquireTokens(resource).Wait();
                         }
 
-                        var resource = GetResource(uri, env);
+                        resource = resource ?? GetResource(uri, env);
                         var subscriptionId = GetTenantOrSubscription(uri);
                         TokenCacheInfo cacheInfo = persistentAuthHelper.GetToken(subscriptionId, resource).Result;
                         return HttpInvoke(uri, cacheInfo, verb, verbose, content, headers).Result;
@@ -396,22 +408,27 @@ namespace ARMClient
                 {
                     throw new Exception("ARMCLIENT_CERT environment variable is required when invoking a custom url.");
                 }
-
-                using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
-                {
-                    store.Open(OpenFlags.ReadOnly);
-                    var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certSubjectName, validOnly: true);
-                    if (certs.Count == 0)
-                    {
-                        throw new InvalidOperationException($"Unable to find a certificate with subject name '{certSubjectName}'.");
-                    }
-
-                    primaryHandler.ClientCertificates.Add(certs[0]);
-                }
+                
+                primaryHandler.ClientCertificates.Add(FindCertificate(certSubjectName));
             }
 
             var logginerHandler = new HttpLoggingHandler(primaryHandler, verbose);
             return await Utils.HttpInvoke(uri, cacheInfo, verb, logginerHandler, content, headers);
+        }
+
+        private static X509Certificate2 FindCertificate(string certSubjectName)
+        {
+            using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
+            {
+                store.Open(OpenFlags.ReadOnly);
+                var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certSubjectName, validOnly: true);
+                if (certs.Count == 0)
+                {
+                    throw new InvalidOperationException($"Unable to find a certificate with subject name '{certSubjectName}'.");
+                }
+
+                return certs[0];
+            }
         }
 
         //http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript
