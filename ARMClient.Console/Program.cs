@@ -24,6 +24,11 @@ namespace ARMClient
         static int Main(string[] args)
         {
             System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+            System.Net.ServicePointManager.ServerCertificateValidationCallback = (object context, X509Certificate cert, X509Chain chain, SslPolicyErrors sslPolicyErrors) =>
+            {
+                return true;
+            };
+
             Utils.SetTraceListener(new ConsoleTraceListener());
             try
             {
@@ -421,11 +426,14 @@ namespace ARMClient
             using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
             {
                 store.Open(OpenFlags.ReadOnly);
-                var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certSubjectName, validOnly: true);
+                var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certSubjectName, validOnly: false);
                 if (certs.Count == 0)
                 {
                     throw new InvalidOperationException($"Unable to find a certificate with subject name '{certSubjectName}'.");
                 }
+                
+                // Ensure we can safely load the certificate from the store.
+                using (certs[0].GetRSAPrivateKey()) { }
 
                 return certs[0];
             }

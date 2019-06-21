@@ -119,7 +119,17 @@ namespace ARMClient.Authentication.Utilities
                         {
                             client.DefaultRequestHeaders.Add("x-ms-client-principal-name", claims["unique_name"].Value<string>());
                         }
-                        client.DefaultRequestHeaders.Add("x-ms-arm-signed-user-token", cacheInfo.AccessToken);
+
+                        if (headers != null && headers.ContainsKey("usertoken"))
+                        {
+                            client.DefaultRequestHeaders.Add("x-ms-arm-signed-user-token", headers["usertoken"]);
+                            headers.Remove("usertoken");
+                        }
+                        else
+                        {
+                            client.DefaultRequestHeaders.Add("x-ms-arm-signed-user-token", cacheInfo.AccessToken);
+                        }
+
                         client.DefaultRequestHeaders.Add("Referer", uri.OriginalString);
                     }
                     else
