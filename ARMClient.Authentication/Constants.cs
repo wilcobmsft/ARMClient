@@ -28,15 +28,15 @@ namespace ARMClient.Authentication
             "https://graph.cloudapi.us"
         };
 
-        public static string[] CSMUrls = new[]
+        public static string[][] CSMUrls = new[]
         {
-            "https://management.chinacloudapi.cn",
-            "https://api-current.resources.windows-int.net",
-            "https://api-dogfood.resources.windows-int.net",
-            "https://management.azure.com",
-            "https://management.usgovcloudapi.net",
-            "https://management.microsoftazure.de",
-            "https://notsupport.com"
+            new string[] {  "https://management.chinacloudapi.cn" },
+            new string[] {  "https://api-current.resources.windows-int.net" },
+            new string[] {  "https://api-dogfood.resources.windows-int.net", "https://api-dogfood-centralus.resources.windows-int.net", "https://api-dogfood-northeurope.resources.windows-int.net", "https://api-dogfood-westeurope.resources.windows-int.net" },
+            new string[] {  "https://management.azure.com", "https://centraluseuap.management.azure.com", "https://eastus2euap.management.azure.com" },
+            new string[] {  "https://management.usgovcloudapi.net" },
+            new string[] {  "https://management.microsoftazure.de" },
+            new string[] {  "https://notsupport.com" }
         };
 
         public static string[] RdfeUrls = new[]

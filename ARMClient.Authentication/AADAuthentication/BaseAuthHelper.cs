@@ -340,7 +340,7 @@ namespace ARMClient.Authentication.AADAuthentication
         {
             using (var client = new HttpClient())
             {
-                var serviceUrl = ARMClient.Authentication.Constants.CSMUrls[(int)AzureEnvironments];
+                var serviceUrl = ARMClient.Authentication.Constants.CSMUrls[(int)AzureEnvironments].First();
                 string requestUri = String.Format("{0}/subscriptions/{1}?api-version=2014-04-01", serviceUrl.Trim('/'), subscriptionId);
                 using (var response = await client.GetAsync(requestUri))
                 {

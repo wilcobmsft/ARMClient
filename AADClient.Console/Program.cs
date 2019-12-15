@@ -539,7 +539,7 @@ namespace ARMClient
                 || String.Equals(parts[0], "subscriptions", StringComparison.OrdinalIgnoreCase)
                 || String.Equals(parts[0], "providers", StringComparison.OrdinalIgnoreCase))
             {
-                return new Uri(new Uri(ARMClient.Authentication.Constants.CSMUrls[(int)env]), path);
+                return new Uri(new Uri(ARMClient.Authentication.Constants.CSMUrls[(int)env].First()), path);
             }
 
             Guid guid;
@@ -931,8 +931,8 @@ namespace ARMClient
 
             for (int i = 0; i < Constants.CSMUrls.Length; ++i)
             {
-                var url = Constants.CSMUrls[i];
-                if (url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0)
+                var urls = Constants.CSMUrls[i];
+                if (urls.Any(url => url.IndexOf(host, StringComparison.OrdinalIgnoreCase) > 0))
                 {
                     return (AzureEnvironments)i;
                 }
